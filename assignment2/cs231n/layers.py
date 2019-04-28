@@ -401,7 +401,16 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x = x.T  # transpose X to apply code from batchnorm (D, N)
+    mu = np.mean(x, axis=0)  # (N,)
+    x_centered = x - mu  # (D, N)
+    var = np.var(x, axis=0)  # (N,)
+    inv_std = 1.0 / np.sqrt(var + eps)  # (N,)
+    x_norm = x_centered * inv_std  # (D, N)
+    x_norm = x_norm.T  # transpose to original shape (N, D)
+    out = gamma * x_norm + beta
+
+    cache = (x_norm, x_centered, inv_std, gamma)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -436,7 +445,20 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x_norm, x_centered, inv_std, gamma = cache
+    _, D = x_norm.shape
+
+    # Gradients
+    dbeta = np.sum(dout, axis=0)  # (D,)
+    dgamma = np.sum(dout * x_norm, axis=0)  # (D,)
+
+    dx_norm = dout * gamma  # (N, D)
+    dx_norm = dx_norm.T  # transpose (D, N)
+    x_norm = x_norm.T  # (D, N)
+
+    dx = (1. / D) * inv_std * (D * dx_norm - np.sum(dx_norm, axis=0) \
+      - x_norm * np.sum(dx_norm * x_norm, axis=0))
+    dx = dx.T
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

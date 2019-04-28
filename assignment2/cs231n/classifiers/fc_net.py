@@ -216,6 +216,11 @@ class FullyConnectedNet(object):
             self.params['gamma' + str(i + 1)] = np.ones(layers[i + 1])
             self.params['beta' + str(i + 1)] = np.zeros(layers[i + 1])
 
+          # Layer normalization (except for last layer)
+          if self.normalization == 'layernorm' and (i < len(hidden_dims)):
+            self.params['gamma' + str(i + 1)] = np.ones(layers[i + 1])
+            self.params['beta' + str(i + 1)] = np.zeros(layers[i + 1])
+
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -284,7 +289,7 @@ class FullyConnectedNet(object):
         number_hidden_layers = self.num_layers - 1
 
         for i in range(number_hidden_layers):
-          
+
           # If Batch normalization
           if self.normalization == 'batchnorm':
             W = self.params['W' + str(i + 1)]
@@ -293,6 +298,15 @@ class FullyConnectedNet(object):
             beta = self.params['beta' + str(i + 1)]
             bn_param = self.bn_params[i]
             h, h_cache = affine_bn_relu_forward(h, W, b, gamma, beta, bn_param)
+
+          # If Layer normalization
+          elif self.normalization == 'layernorm':
+            W = self.params['W' + str(i + 1)]
+            b = self.params['b' + str(i + 1)]
+            gamma = self.params['gamma' + str(i + 1)]
+            beta = self.params['beta' + str(i + 1)]
+            ln_param = self.bn_params[i]
+            h, h_cache = affine_ln_relu_forward(h, W, b, gamma, beta, ln_param)
 
           # Otherwise
           else:
@@ -351,6 +365,12 @@ class FullyConnectedNet(object):
           # If Batch Normalization
           if self.normalization == 'batchnorm':
             dx, dW, db, dgamma, dbeta = affine_bn_relu_backward(dx, h_caches['h' + str(i)])
+            grads['gamma' + str(i)] = dgamma
+            grads['beta' + str(i)] = dbeta
+
+          # If Layer Normalization
+          elif self.normalization == 'layernorm':
+            dx, dW, db, dgamma, dbeta = affine_ln_relu_backward(dx, h_caches['h' + str(i)])
             grads['gamma' + str(i)] = dgamma
             grads['beta' + str(i)] = dbeta
 
