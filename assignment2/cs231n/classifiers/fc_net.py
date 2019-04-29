@@ -314,6 +314,11 @@ class FullyConnectedNet(object):
             b = self.params['b' + str(i + 1)]
             h, h_cache = affine_relu_forward(h, W, b)
             
+          # If Dropout
+          if self.use_dropout:
+            h, dropout_cache = dropout_forward(h, self.dropout_param)
+            h_cache = (*h_cache, dropout_cache)  # cache now integrates dropout step
+            
           # Store caches
           h_caches['h' + str(i + 1)] = h_cache 
 
@@ -361,6 +366,11 @@ class FullyConnectedNet(object):
 
         # Backward pass for the other layers
         for i in range(number_hidden_layers, 0, -1):
+
+          # If Dropout
+          if self.use_dropout:
+            dx = dropout_backward(dx, h_caches['h' + str(i)][-1])
+            h_caches['h' + str(i)] = h_caches['h' + str(i)][:-1]  # remove dropout cache
 
           # If Batch Normalization
           if self.normalization == 'batchnorm':
