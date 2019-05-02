@@ -598,7 +598,32 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Load parameters
+    S = conv_param['stride']
+    P = conv_param['pad']
+    N, _, H, W = x.shape
+    F, _, HH, WW = w.shape
+
+    # Shape output
+    H_out = int(1 + (H + 2 * P - HH) / S)  # create float by default
+    W_out = int(1 + (W + 2 * P - WW) / S)
+    out = np.zeros((N, F, H_out, W_out))
+
+    # Pad input
+    x_pad = np.pad(x, pad_width=((0, 0), (0, 0), (P, P), (P, P)), mode='constant', constant_values=0)
+
+    # Compute convolution
+    for n in range(N):
+      image = x_pad[n]  # (C, H, W)
+      for f in range(F):
+        kernel = w[f]  # (C, HH, WW)
+        bias = b[f]
+        for i in range(H_out):
+          for j in range(W_out):
+            # take the slice of image with which to perform the dot product
+            image_slice = image[:, i*S:(i*S+HH), j*S:(j*S+HH)]
+            # perform dot product
+            out[n, f, i, j] = np.sum(image_slice * kernel) + bias
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -627,7 +652,48 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Notice that dout has shape (N, F, H_out, W_out) and w has shape (F, C, HH, WW)
+
+    # Load parameters
+    x, w, b, conv_param = cache
+    S = conv_param['stride']
+    P = conv_param['pad']
+    N, _, H, W = x.shape
+    F, _, HH, WW = w.shape
+    H_out = int(1 + (H + 2 * P - HH) / S)
+    W_out = int(1 + (W + 2 * P - WW) / S)
+  
+    # Pad x
+    x_pad = np.pad(x, pad_width=((0,0), (0,0), (P,P), (P,P)), mode='constant', constant_values=0)
+    
+    # Make sure grdients have the right shape
+    dx = np.zeros(x.shape)
+    dx_pad = np.zeros(x_pad.shape)
+    dw = np.zeros(w.shape)
+    db = np.zeros(b.shape)
+  
+    # Compute gradients
+    db = np.sum(dout, axis=(0, 2, 3))  # (F,)
+
+    # Notice that all individuals contribute to the weights, but the weights in
+    # a specific channel dimension are computed based on values in that same channel.
+ 
+    # Loop over height and width   
+    for i in range(H_out):
+        for j in range(W_out): 
+          
+          # compute dw
+          x_pad_tmp = x_pad[:, :, i*S:(i*S+HH), j*S:(j*S+WW)]
+          for f in range(F):
+            dw[f, :, :, :] += np.sum(x_pad_tmp * (dout[:, f, i, j])[:, None, None, None], axis=0)
+          
+          # compute dx_pad (convolution)
+          for n in range(N):
+            dx_pad[n, :, i*S:(i*S+HH), j*S:(j*S+WW)] += \
+              np.sum(w[:, :, :, :] * (dout[n, :, i, j])[:, None, None, None], axis=0)
+
+    # compute dx
+    dx = dx_pad[:, :, P:-P, P:-P]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
