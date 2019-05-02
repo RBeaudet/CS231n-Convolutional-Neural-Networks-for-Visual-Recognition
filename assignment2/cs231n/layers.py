@@ -727,7 +727,21 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Unpack parameters
+    pool_height = pool_param['pool_height']
+    pool_width = pool_param['pool_width']
+    S = pool_param['stride']
+    N, C, H, W = x.shape
+    H_out = int(1 + (H - pool_height) / S)
+    W_out = int(1 + (W - pool_width) / S)
+
+    # Shape the output
+    out = np.zeros((N, C, H_out, W_out))
+
+    # Compute max pooling
+    for i in range(H_out):
+      for j in range(W_out):
+        out[:, :, i, j] = np.max(x[:, :, i*S : (i*S + pool_height), j*S:(j*S + pool_width)], axis=(2, 3))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -754,7 +768,29 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # dout is of shape (N, C, H_out, W_out)
+    # x is of shape (N, C, H, W)
+  
+    x, pool_param = cache
+    pool_height = pool_param['pool_height']
+    pool_width = pool_param['pool_width']
+    S = pool_param['stride']
+    N, C, H, W = x.shape
+
+    H_out = int((H - pool_height) / S + 1)
+    W_out = int((W - pool_width) / S + 1)
+
+    dx = np.zeros(x.shape)  # (N, C, H, W)
+    for n in range(N):
+      for c in range(C):
+        for i in range(H_out):
+          for j in range(W_out):
+            # get window used to compute out[n, c, i, j]
+            window = x[n, c, i*S:(i*S + pool_height), j*S:(j*S + pool_width)]
+            # create mask for maximum value in window
+            mask = window == np.max(window)
+            # compute gradient for this window
+            dx[n, c, i*S:(i*S + pool_height), j*S:(j*S + pool_width)] = dout[n, c, i, j] * mask
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
