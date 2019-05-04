@@ -832,7 +832,19 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    
+    # In order to use our batchnorm_forward function, we need to
+    # reshape x from (N, C, H, W) to (N * H * W, C)
+    x = x.transpose(0, 3, 2, 1)  # (N, W, H, C)
+    x = x.reshape(N * W * H, -1)  # (N * W * H, C)
+
+    # Use batchnorm_forward
+    out_tmp, cache = batchnorm_forward(x, gamma, beta, bn_param)
+
+    # Reshape
+    out = out_tmp.reshape(N, W, H, C)  # (N, H, W, C)
+    out = out.transpose(0, 3, 2, 1)  # (N, C, H, W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -866,7 +878,16 @@ def spatial_batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = dout.shape
+
+    # Reshape dout
+    dout = dout.transpose(0, 3, 2, 1)  # (N, W, H, C)
+    dout = dout.reshape(N * W * H, C)  # (N * W * H, C)
+
+    # Apply batchnorm_backward and reshape
+    dx_tmp, dgamma, dbeta = batchnorm_backward(dout, cache)
+    dx = dx_tmp.reshape((N, W, H, C))  # (N, W, H, C)
+    dx = dx.transpose(0, 3, 2, 1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
