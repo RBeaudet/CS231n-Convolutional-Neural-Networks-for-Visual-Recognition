@@ -927,7 +927,27 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+
+    # Reshape x
+    x = np.reshape(x, (N * G, (C // G) * H * W))
+    x = x.T  # transpose x to use Batch Normalization code
+
+    # Apply Batch Normalization code
+    mu = np.mean(x, axis=0) 
+    xmu = x - mu
+    sq = xmu ** 2
+    var = np.var(x, axis=0)
+    sqrtvar = np.sqrt(var + eps)
+    ivar = 1. / sqrtvar
+    xhat = xmu * ivar
+    
+    # Transform xhat and reshape
+    xhat = np.reshape(xhat.T, (N, C, H, W))
+    out = gamma[np.newaxis, :, np.newaxis, np.newaxis] * xhat + beta[np.newaxis, :, np.newaxis, np.newaxis]
+
+    # Cache
+    cache = (xhat, gamma, xmu, ivar, sqrtvar, var, eps, G)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -957,7 +977,25 @@ def spatial_groupnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = dout.shape
+
+    # Unpack cache values
+    xhat, gamma, _, ivar, _, _, _, G = cache
+
+    # Compute dbeta and dgamma
+    dbeta = np.sum(dout, axis=(0, 2, 3), keepdims=True)  # (1, C, 1, 1)
+    dgamma = np.sum(dout * xhat, axis=(0, 2, 3), keepdims=True)  # (1, C, 1, 1)
+
+    # Compute dxhat
+    dxhat = dout * gamma[np.newaxis, :, np.newaxis, np.newaxis]
+    dxhat = np.reshape(dxhat, (N * G, (C // G) * H * W)).T
+    xhat = np.reshape(xhat, (N * G, (C // G) * H * W)).T
+
+    N1 = dxhat.shape[0]
+    
+    # Compute dx
+    dx = 1.0 / N1 * ivar * (N1 * dxhat - np.sum(dxhat, axis=0) - xhat * np.sum(dxhat * xhat, axis=0))
+    dx = np.reshape(dx.T, (N, C, H, W))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
